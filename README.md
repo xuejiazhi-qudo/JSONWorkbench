@@ -7,6 +7,7 @@
 <p align="center">
   An offline desktop toolkit for editing, validating, comparing, querying, and converting JSON.
 </p>
+<img width="1920" height="1031" alt="image" src="https://github.com/user-attachments/assets/5e658439-675a-4daf-aae3-f674f35f3446" />
 
 <p align="center">
   <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
