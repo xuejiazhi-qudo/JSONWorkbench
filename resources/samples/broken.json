@@ -1,0 +1,7 @@
+{
+  "name": "broken sample",
+  "items": [1, 2, 3,],
+  'singleQuoted': true,
+  unquotedKey: "value"
+  "trailing": "comma above",
+}

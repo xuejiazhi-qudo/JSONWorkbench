@@ -1,0 +1,14 @@
+// JSONC 示例：允许注释与结尾逗号
+// 标准 JSON 模式下，这份文件会被判定为非法（这是有意为之，避免把注释误判成标准 JSON）
+{
+  /* 块注释也可以 */
+  "configVersion": 3,
+  "features": {
+    "offline": true,
+    "telemetry": false, // 永不联网
+  },
+  "paths": [
+    "./resources",
+    "./samples",
+  ],
+}

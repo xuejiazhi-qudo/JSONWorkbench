@@ -1,0 +1,46 @@
+{
+  "project": "JSON Workbench",
+  "version": "1.0.0",
+  "offline": true,
+  "sample": {
+    "说明": "这是一份用于演示的示例 JSON，包含中文、数字精度与嵌套结构",
+    "ratio": 1.230,
+    "scientific": 1e5,
+    "bigInteger": 12345678901234567890123456789,
+    "emoji": "🧰 ✅"
+  },
+  "users": [
+    {
+      "id": 1,
+      "name": "张三",
+      "email": "zhangsan@example.com",
+      "active": true,
+      "score": 88.5,
+      "tags": ["admin", "beta"],
+      "profile": {
+        "city": "杭州",
+        "age": 29,
+        "nickname": null
+      }
+    },
+    {
+      "id": 2,
+      "name": "Alice",
+      "email": "alice@example.com",
+      "active": false,
+      "score": 92.0,
+      "tags": [],
+      "profile": {
+        "city": "Berlin",
+        "age": 34,
+        "nickname": "ali"
+      }
+    }
+  ],
+  "matrix": [
+    [1, 2, 3],
+    [4, 5, 6]
+  ],
+  "emptyObject": {},
+  "emptyArray": []
+}
