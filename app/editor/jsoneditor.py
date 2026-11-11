@@ -13,12 +13,15 @@ from __future__ import annotations
 from typing import List, Optional, Tuple
 
 from PySide6.QtCore import QRect, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetricsF, QTextCursor, QTextFormat
+from PySide6.QtGui import QColor, QFont, QFontMetricsF, QPainter, QTextCursor, QTextFormat
 from PySide6.QtWidgets import QPlainTextEdit, QTextEdit
 
 from app.core.jsonparser import Issue
 from app.editor.highlighter import JsonHighlighter
-from app.editor.linenumberarea import LineNumberArea, MarkerStore, paint_gutter
+from app.editor.folding import FoldingController
+from app.editor.linenumberarea import (FOLD_WIDTH, LineNumberArea, MarkerStore,
+                                       next_visible_candidate, paint_gutter)
+from app.i18n import tr
 from app.widgets.theme import DARK_PALETTE, Palette
 
 _PAIRS = {"{": "}", "[": "]"}
@@ -67,6 +70,7 @@ class JsonEditor(QPlainTextEdit):
             self.setReadOnly(True)
 
         self._gutter = LineNumberArea(self)
+        self.folding = FoldingController(self)
         self._highlighter = JsonHighlighter(self.document())
 
         self.blockCountChanged.connect(self._on_block_count_changed)
@@ -159,7 +163,7 @@ class JsonEditor(QPlainTextEdit):
             return 0
         digits = max(2, len(str(self.blockCount())))
         char_w = QFontMetricsF(self.font()).horizontalAdvance("9")
-        return int(14 + char_w * digits + 2 * 3 + 8)
+        return int(14 + char_w * digits + 2 * 3 + 8 + FOLD_WIDTH)
 
     def _update_gutter_width(self) -> None:
         self.setViewportMargins(self.line_number_width(), 0, 0, 0)
@@ -184,6 +188,28 @@ class JsonEditor(QPlainTextEdit):
 
     def paint_line_numbers(self, area, event) -> None:
         paint_gutter(self, area, event, self._palette, self._markers, self._show_line_numbers)
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        super().paintEvent(event)
+        if not self.folding.collapsed:
+            return
+        painter = QPainter(self.viewport())
+        painter.setFont(self.font())
+        painter.setPen(QColor(self._palette.gutter_text))
+        block = self.firstVisibleBlock()
+        while block.isValid():
+            top = self.blockBoundingGeometry(block).translated(self.contentOffset()).top()
+            if top > self.viewport().height():
+                break
+            line = block.blockNumber()
+            if block.isVisible() and line in self.folding.collapsed:
+                cursor = QTextCursor(block)
+                cursor.movePosition(QTextCursor.EndOfBlock)
+                rect = self.cursorRect(cursor)
+                painter.drawText(rect.right() + 6, rect.top() + self.fontMetrics().ascent(),
+                                 " … " + self.folding.regions[line].closing)
+            block = next_visible_candidate(self, block)
+        painter.end()
 
     # ------------------------------------------------------------------ 装饰（当前行/括号/错误行）
     def _refresh_decorations(self) -> None:
@@ -299,6 +325,7 @@ class JsonEditor(QPlainTextEdit):
 
     # ------------------------------------------------------------------ 光标与文本事件
     def _on_cursor_moved(self) -> None:
+        self.folding.reveal_cursor()
         self._refresh_decorations()
         cursor = self.textCursor()
         self.cursor_moved.emit(cursor.blockNumber() + 1, cursor.columnNumber() + 1)
@@ -544,6 +571,7 @@ class JsonEditor(QPlainTextEdit):
     # ------------------------------------------------------------------ 内容
     def set_content(self, text: str, *, keep_undo: bool = False) -> None:
         """设置内容。``keep_undo=False`` 时清空撤销栈（用于载入文件）。"""
+        self.folding.reset()
         if keep_undo:
             cursor = self.textCursor()
             cursor.select(QTextCursor.Document)
@@ -553,6 +581,20 @@ class JsonEditor(QPlainTextEdit):
             self.setPlainText(text)
         self.document().setModified(False)
         self._on_text_changed()
+        self.folding.rebuild()
+
+    def contextMenuEvent(self, event) -> None:  # noqa: N802
+        menu = self.createStandardContextMenu()
+        menu.addSeparator()
+        self.folding.rebuild()
+        collapse = menu.addAction(tr("Collapse all"))
+        expand = menu.addAction(tr("Expand all"))
+        collapse.setEnabled(bool(self.folding.regions))
+        expand.setEnabled(bool(self.folding.collapsed))
+        collapse.triggered.connect(self.folding.collapse_all)
+        expand.triggered.connect(self.folding.expand_all)
+        menu.exec(event.globalPos())
+        menu.deleteLater()
 
     def text_value(self) -> str:
         return self.toPlainText()

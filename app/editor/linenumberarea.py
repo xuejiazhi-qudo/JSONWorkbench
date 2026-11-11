@@ -4,11 +4,20 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
-from PySide6.QtCore import QRect, QSize, Qt
-from PySide6.QtGui import QColor, QFont, QPainter
+from PySide6.QtCore import QPointF, QRect, QSize, Qt
+from PySide6.QtGui import QColor, QFont, QPainter, QPolygonF
 from PySide6.QtWidgets import QPlainTextEdit, QWidget
+from app.i18n import tr
 
 MARKER_RADIUS = 3
+FOLD_WIDTH = 18
+
+
+def next_visible_candidate(editor, block):
+    region = editor.folding.regions.get(block.blockNumber())
+    if region is not None and block.blockNumber() in editor.folding.collapsed:
+        return region.end.next()
+    return block.next()
 
 
 class LineNumberArea(QWidget):
@@ -17,6 +26,39 @@ class LineNumberArea(QWidget):
     def __init__(self, editor: QPlainTextEdit) -> None:
         super().__init__(editor)
         self._editor = editor
+        self.setMouseTracking(True)
+
+    def _fold_line_at(self, position):
+        if position.x() < self.width() - FOLD_WIDTH:
+            return None
+        block = self._editor.firstVisibleBlock()
+        while block.isValid():
+            top = self._editor.blockBoundingGeometry(block).translated(self._editor.contentOffset()).top()
+            height = self._editor.blockBoundingRect(block).height()
+            if top > position.y():
+                break
+            if block.isVisible() and top <= position.y() < top + height:
+                line = block.blockNumber()
+                return line if line in self._editor.folding.regions else None
+            block = next_visible_candidate(self._editor, block)
+        return None
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        if event.button() == Qt.LeftButton:
+            self._editor.folding.rebuild()
+            line = self._fold_line_at(event.position())
+            if line is not None:
+                self._editor.folding.toggle(line)
+                event.accept()
+                return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:  # noqa: N802
+        line = self._fold_line_at(event.position())
+        self.setCursor(Qt.PointingHandCursor if line is not None else Qt.ArrowCursor)
+        self.setToolTip((tr("Expand") if line in self._editor.folding.collapsed else tr("Collapse"))
+                        if line is not None else "")
+        super().mouseMoveEvent(event)
 
     def sizeHint(self) -> QSize:  # noqa: N802 (Qt 命名)
         return QSize(self._editor.line_number_width(), 0)
@@ -74,17 +116,28 @@ def paint_gutter(editor: QPlainTextEdit, area: QWidget, event, palette,
                 painter.setPen(Qt.NoPen)
                 painter.setBrush(color)
                 painter.drawEllipse(
-                    QRect(int(width - 2 * MARKER_RADIUS - 3), int(center_y - MARKER_RADIUS),
+                    QRect(int(width - FOLD_WIDTH - 2 * MARKER_RADIUS - 3), int(center_y - MARKER_RADIUS),
                           2 * MARKER_RADIUS, 2 * MARKER_RADIUS))
                 painter.setBrush(Qt.NoBrush)
             if show_numbers:
                 painter.setPen(QColor(palette.gutter_text))
-                right = width - (2 * MARKER_RADIUS + 8)
+                right = width - FOLD_WIDTH - (2 * MARKER_RADIUS + 8)
                 painter.drawText(0, top, right, bottom - top,
                                  Qt.AlignRight | Qt.AlignVCenter, str(number))
-        block = block.next()
+            if block_number in editor.folding.regions:
+                x = width - FOLD_WIDTH / 2
+                y = top + editor.fontMetrics().height() / 2
+                if block_number in editor.folding.collapsed:
+                    points = [(x - 2, y - 4), (x + 3, y), (x - 2, y + 4)]
+                else:
+                    points = [(x - 4, y - 2), (x + 4, y - 2), (x, y + 3)]
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QColor(palette.gutter_text))
+                painter.drawPolygon(QPolygonF([QPointF(px, py) for px, py in points]))
+                painter.setBrush(Qt.NoBrush)
+        block = next_visible_candidate(editor, block)
         top = bottom
         bottom = top + round(editor.blockBoundingRect(block).height())
-        block_number += 1
+        block_number = block.blockNumber()
 
     painter.end()

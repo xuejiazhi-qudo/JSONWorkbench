@@ -7,7 +7,6 @@
 <p align="center">
   An offline desktop toolkit for editing, validating, comparing, querying, and converting JSON.
 </p>
-<img width="1920" height="1031" alt="image" src="https://github.com/user-attachments/assets/5e658439-675a-4daf-aae3-f674f35f3446" />
 
 <p align="center">
   <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
@@ -53,6 +52,7 @@ The interface supports **English and Simplified Chinese**, **light and dark them
 
 ### Editing and file support
 
+- Collapse or expand JSON objects and arrays using the arrows beside the line numbers. The editor context menu also provides Collapse all and Expand all. Finding or navigating to hidden content reveals it automatically; folding does not change the document text.
 - Drag files into the window or tab bar; open, save, and use Save As.
 - Detect UTF-8, UTF-8 with BOM, UTF-16, and GB18030; preserve LF or CRLF line endings.
 - Find and replace plain text or regular expressions, including capture-group replacements.

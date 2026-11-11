@@ -202,6 +202,8 @@ EXTRA_LABEL_KEYS = (
 )
 
 ZH_UI = {
+    "Expand": "展开",
+    "Collapse": "折叠",
     "Document changed; the formatting result was discarded.": "文档已更改，已丢弃过期的格式化结果。",
     "Resolve duplicate keys before formatting to avoid data loss.": "请先处理重复键，再进行格式化或压缩，以免丢失数据。",
     "Remove duplicate keys or JSONC comments before editing the tree to avoid data loss.":
